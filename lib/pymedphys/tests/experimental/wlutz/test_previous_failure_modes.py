@@ -14,13 +14,13 @@
 
 import pytest
 import toml
-
-import numpy as np
-
-import pylinac as _pylinac_installed
+from pymedphys._imports import numpy as np
 
 import pymedphys
 
+from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
+    pylinac as _pylinac_installed,
+)
 from pymedphys._experimental.wlutz import main as _wlutz
 
 EDGE_LENGTHS = [20, 26]
@@ -28,8 +28,11 @@ PENUMBRA = 2
 BB_DIAMETER = 8
 
 ALGORITHM_PYMEDPHYS = "PyMedPhys"
-ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
-ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
+
+
+def get_pylinac_algorithm():
+    ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
+    return ALGORITHM_PYLINAC
 
 
 def data_files():
@@ -58,6 +61,8 @@ def _get_data_files_by_zip_name(zip_filename):
 
 # TODO: Add a "should be able to find BB on 000058F3.jpg"
 
+# TODO: Add 00005A50.jpg
+
 
 def test_slightly_wrong_collimator_angle():
     filename = "0000528F.jpg"
@@ -79,7 +84,7 @@ def test_offset_pylinac():
     )
 
     _compare_to_expected(
-        filename, expected_field_centre, expected_bb_centre, ALGORITHM_PYLINAC
+        filename, expected_field_centre, expected_bb_centre, get_pylinac_algorithm()
     )
 
 

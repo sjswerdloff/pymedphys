@@ -40,16 +40,13 @@ REQUIREMENTS_TXT = REPO_ROOT.joinpath("requirements.txt")
 REQUIREMENTS_DEV_TXT = REPO_ROOT.joinpath("requirements-dev.txt")
 REQUIREMENTS_USER_TXT = REPO_ROOT.joinpath("requirements-deploy.txt")
 
-ROOT_PYLINT = REPO_ROOT.joinpath(".pylintrc")
-LIBRARY_PYLINT = LIBRARY_PATH.joinpath(".pylintrc")
-
 ROOT_README = REPO_ROOT.joinpath("README.rst")
 DOCS_README = DOCS_PATH.joinpath("README.rst")
 
 DOCS_CHANGELOG = DOCS_PATH.joinpath("release-notes.md")
 ROOT_CHANGELOG = REPO_ROOT.joinpath("CHANGELOG.md")
 
-DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contributing", "index.md")
+DOCS_CONTRIBUTING = DOCS_PATH.joinpath("contrib", "index.md")
 ROOT_CONTRIBUTING = REPO_ROOT.joinpath("CONTRIBUTING.md")
 
 AUTOGEN_MESSAGE = [
@@ -88,7 +85,6 @@ def propagate_all(args):
 
 def propagate_file_copies_into_library():
     files_to_copy = [
-        (ROOT_PYLINT, LIBRARY_PYLINT),
         (DOCS_README, ROOT_README),
         (DOCS_CHANGELOG, ROOT_CHANGELOG),
         (DOCS_CONTRIBUTING, ROOT_CONTRIBUTING),
@@ -103,7 +99,7 @@ def _copy_file_with_autogen_message(original_path, target_path):
         comment_syntax = ("<!-- ", " -->")
     elif target_path.suffix == ".rst":
         comment_syntax = ("..\n    ", "")
-    elif target_path.name == ".pylintrc" or target_path.suffix == ".py":
+    elif target_path.suffix == ".py":
         comment_syntax = ("# ", "")
     else:
         raise ValueError(f"Invalid file suffix. Suffix was {target_path.suffix}")
@@ -151,7 +147,7 @@ def propagate_lock_requirements_setup_and_hash():
 
 
 def _update_poetry_lock():
-    subprocess.check_call("poetry update pymedphys", shell=True)
+    subprocess.check_call("poetry lock --no-update", shell=True)
 
 
 def read_pyproject():
@@ -230,27 +226,13 @@ def _propagate_setup():
 
 
 def _propagate_requirements():
-    """Propagates requirement files for use without Poetry.
-    """
-    # The docs are included within ``requirements.txt`` due to netlify
-    # reading this file and spinning it up. The few extra dependencies
-    # for users who choose to go this route isn't such a bad trade off
-    # here.
-    _make_requirements_txt(["user", "docs"], "requirements.txt", editable=False)
+    """Propagates requirement files for use without Poetry."""
+    _make_requirements_txt(["user"], "requirements.txt", editable=False)
+    _make_requirements_txt(["dev"], "requirements-dev.txt")
 
-    # The editable install `-e` used here means that should a user edit
-    # the git repo they will be utilising their edits within their
-    # environment as opposed to what was originally installed.
-    _make_requirements_txt(["dev"], "requirements-dev.txt", editable=True)
-
-    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
-    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
-    # for more details.
     _make_requirements_txt(
         ["user", "tests"], "requirements-deploy.txt", include_pymedphys=False
     )
-
-    _make_requirements_txt(["user"], "requirements-user.txt", editable=True)
 
 
 def _make_requirements_txt(
@@ -276,6 +258,9 @@ def _make_requirements_txt(
 
     poetry_environment_flags = " ".join([f"-E {item}" for item in extras])
 
+    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
+    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
+    # for more details.
     subprocess.check_call(
         (
             "poetry export --without-hashes "
@@ -318,6 +303,17 @@ def propagate_extras():
                 except KeyError:
                     extras[group] = [key]
 
+    for group, deps in extras.items():
+        extras[group] = sorted(deps)
+
+    extras = tomlkit.item(
+        extras, _parent=pyproject_contents["tool"]["poetry"], _sort_keys=True
+    )
+
+    for _, deps in extras.items():
+        if len(deps.as_string()) > 88:
+            deps.multiline(True)
+
     if pyproject_contents["tool"]["poetry"]["extras"] != extras:
         pyproject_contents["tool"]["poetry"]["extras"] = extras
 
@@ -326,8 +322,7 @@ def propagate_extras():
 
 
 def _propagate_pyproject_hash():
-    """Store the pyproject content hash metadata for verification of propagation.
-    """
+    """Store the pyproject content hash metadata for verification of propagation."""
 
     with open(POETRY_LOCK_PATH) as f:
         poetry_lock_contents = tomlkit.loads(f.read())

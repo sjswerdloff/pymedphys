@@ -17,12 +17,11 @@
 
 from hypothesis import given
 from hypothesis.strategies import floats
-
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import pymedphys._mocks.profiles
 
-from pymedphys._experimental.wlutz import createaxis, interppoints
+from pymedphys._experimental.wlutz import createaxis, transformation
 
 
 @given(
@@ -54,7 +53,7 @@ def test_transformed_field_interp(
     field_x_interp = np.linspace(-interp_size / 2, interp_size / 2, 30)
     field_y_interp = np.linspace(-interp_size / 2, interp_size / 2, 40)
 
-    transform = interppoints.translate_and_rotate_transform(centre, degrees)
+    transform = transformation.rotate_and_translate_transform(centre, degrees)
 
     x_interp, y_interp = createaxis.transform_axis(
         field_x_interp, field_y_interp, transform

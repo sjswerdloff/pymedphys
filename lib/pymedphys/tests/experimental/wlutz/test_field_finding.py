@@ -15,11 +15,10 @@
 
 import datetime
 
-import pytest
 from hypothesis import Verbosity, given, settings
 from hypothesis.strategies import floats
-
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys
 from pymedphys._mocks import profiles
@@ -48,7 +47,7 @@ def test_find_field_in_image():
 
 @pytest.mark.slow
 @settings(
-    deadline=datetime.timedelta(milliseconds=4000),
+    deadline=datetime.timedelta(milliseconds=10000),
     max_examples=10,
     verbosity=Verbosity.verbose,
 )

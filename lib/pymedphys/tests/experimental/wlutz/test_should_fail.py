@@ -20,10 +20,7 @@ should fail instead of producing a return value.
 
 import pytest
 import toml
-
-import numpy as np
-
-import pylinac as _pylinac_installed
+from pymedphys._imports import numpy as np
 
 import pymedphys
 
@@ -34,8 +31,6 @@ PENUMBRA = 2
 BB_DIAMETER = 8
 
 ALGORITHM_PYMEDPHYS = "PyMedPhys"
-ALGORITHM_PYLINAC = f"PyLinac v{_pylinac_installed.__version__}"
-ALGORITHMS = [ALGORITHM_PYMEDPHYS, ALGORITHM_PYLINAC]
 
 
 def data_files():

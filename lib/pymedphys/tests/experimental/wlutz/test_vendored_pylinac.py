@@ -14,16 +14,16 @@
 
 import datetime
 
-import pytest
 from hypothesis import Verbosity, given, settings
 from hypothesis.strategies import floats
-
-import numpy as np
-
-import pylinac as _pylinac_installed
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 import pymedphys._mocks.wlutz as mock_wlutz
 
+from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
+    pylinac as _pylinac_installed,
+)
 from pymedphys._experimental.wlutz import pylinacwrapper
 
 

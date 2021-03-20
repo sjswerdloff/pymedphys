@@ -31,9 +31,9 @@ def read_trf(trf):
 
 
 @st.cache
-def _get_mosaiq_configuration(headers):
-    machine_centre_map = _config.get_machine_centre_map()
-    mosaiq_details = _config.get_mosaiq_details()
+def _get_mosaiq_configuration(config, headers):
+    machine_centre_map = _config.get_machine_centre_map(config)
+    mosaiq_details = _config.get_mosaiq_details(config)
 
     centres = {machine_centre_map[machine_id] for machine_id in headers["machine"]}
     mosaiq_servers = [mosaiq_details[centre]["server"] for centre in centres]
@@ -46,21 +46,24 @@ def get_logfile_mosaiq_info(
 ):
     details = []
 
-    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
+    connections = {
+        server["alias"]: st_mosaiq.get_cached_mosaiq_connection(**server)
+        for server in mosaiq_servers
+    }
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]
         centre = machine_centre_map[machine_id]
         mosaiq_timezone = mosaiq_details[centre]["timezone"]
-        server = mosaiq_details[centre]["server"]
-        cursor = cursors[server]
+        server_alias = mosaiq_details[centre]["server"]["alias"]
+        connection = connections[server_alias]
 
         field_label = header["field_label"]
         field_name = header["field_name"]
         utc_date = header["date"]
 
         current_details = pmp_index.get_logfile_mosaiq_info(
-            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+            connection, machine_id, utc_date, mosaiq_timezone, field_label, field_name
         )
         current_details = pd.Series(data=current_details)
 
@@ -71,8 +74,7 @@ def get_logfile_mosaiq_info(
     return details
 
 
-@st.cache()
-def _attempt_patient_name_from_mosaiq(headers):
+def _attempt_patient_name_from_mosaiq(config, headers):
     UNKNOWN_PATIENT_NAME = "Unknown"
 
     st.write(
@@ -86,7 +88,7 @@ def _attempt_patient_name_from_mosaiq(headers):
             machine_centre_map,
             mosaiq_details,
             mosaiq_servers,
-        ) = _get_mosaiq_configuration(headers)
+        ) = _get_mosaiq_configuration(config, headers)
     except KeyError:
         st.warning(
             "Need Mosaiq access to determine patient name. "
@@ -126,7 +128,7 @@ def _attempt_patient_name_from_mosaiq(headers):
     return patient_name
 
 
-def trf_input_method(patient_id="", key_namespace="", **_):
+def trf_input_method(config, patient_id="", key_namespace="", **_):
     """Streamlit GUI method to facilitate TRF data provision.
 
     Notes
@@ -169,7 +171,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     if import_method == INDEXED_TRF_SEARCH:
         try:
-            indexed_trf_directory = _config.get_indexed_trf_directory()
+            indexed_trf_directory = _config.get_indexed_trf_directory(config)
         except KeyError:
             st.write(
                 _exceptions.ConfigMissing(
@@ -269,7 +271,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     identifier = f"TRF ({individual_identifiers[0]})"
 
-    patient_name = _attempt_patient_name_from_mosaiq(headers)
+    patient_name = _attempt_patient_name_from_mosaiq(config, headers)
 
     return {
         "site": None,

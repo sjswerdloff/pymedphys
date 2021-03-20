@@ -19,21 +19,24 @@ from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import helpers as msq_helpers
+from pymedphys._streamlit import categories
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
-CATEGORY = "experimental"
+CATEGORY = categories.ALPHA
 TITLE = "Clinical Dashboard"
 
 
 def main():
-    st.write("# Mosaiq QCL Dashboard")
-
     centres = ["rccc", "nbcc", "sash"]
     # centres = ["nbcc"]
     servers = {
-        "rccc": "msqsql",
-        "nbcc": "physics-server:31433",
-        "sash": "physics-server",
+        "rccc": {"hostname": "msqsql", "alias": "RCCC Mosaiq SQL Server"},
+        "nbcc": {
+            "hostname": "rccc-physicssvr",
+            "port": 31433,
+            "alias": "NBCC Mosaiq SQL Server",
+        },
+        "sash": {"hostname": "rccc-physicssvr", "alias": "SASH Mosaiq SQL Server"},
     }
     physics_locations = {
         "rccc": "Physics_Check",
@@ -41,8 +44,8 @@ def main():
         "sash": "Physics_Check",
     }
 
-    cursors = {
-        centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+    connections = {
+        centre: st_mosaiq.get_cached_mosaiq_connection_in_dict(**servers[centre])
         for centre in centres
     }
 
@@ -52,20 +55,20 @@ def main():
     for centre in centres:
         st.write(f"## {centre.upper()}")
 
-        cursor_bucket = cursors[centre]
+        connection_bucket = connections[centre]
         physics_location = physics_locations[centre]
 
         try:
             table = msq_helpers.get_incomplete_qcls(
-                cursor_bucket["cursor"], physics_location
+                connection_bucket["connection"], physics_location
             )
         except (pymssql.InterfaceError, pymssql.OperationalError) as e:
             st.write(e)
-            cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(
-                servers[centre]
+            connection_bucket["connection"] = st_mosaiq.get_uncached_mosaiq_connection(
+                **servers[centre]
             )
             table = msq_helpers.get_incomplete_qcls(
-                cursor_bucket["cursor"], physics_location
+                connection_bucket["connection"], physics_location
             )
 
         table_dict = collections.OrderedDict()

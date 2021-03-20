@@ -14,25 +14,39 @@
 # limitations under the License.
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pylinac as _pylinac_installed
 
 from pymedphys._experimental.vendor.pylinac_vendored import (
     winstonlutz as _pylinac_vendored_wlutz,
 )
+from pymedphys._experimental.vendor.pylinac_vendored._pylinac_installed import (
+    pylinac as _pylinac_installed,
+)
 
-from . import utilities as _utilities
+from . import transformation as _transformation
+
+
+def _get_dx_dy_dpi(x, y):
+    dx = _convert_grid_to_step_size(x)
+    dy = _convert_grid_to_step_size(y)
+
+    if dx == dy:
+        dpmm = dx
+        dpi = dpmm * 25.4
+    else:
+        dpi = None
+
+    return dx, dy, dpi
 
 
 def run_wlutz_raw(
     x, y, image, find_bb=True, pylinac_version=None, fill_errors_with_nan=False
 ):
+    dx, dy, dpi = _get_dx_dy_dpi(x, y)
+
     WLImage = _get_class_for_version(pylinac_version)
-    wl_image = WLImage(image)
+    wl_image = WLImage(image, dpi=dpi)
 
     nan_coords = [np.nan, np.nan]
-
-    dx = _convert_grid_to_step_size(x)
-    dy = _convert_grid_to_step_size(y)
 
     try:
         field_centre = [
@@ -71,12 +85,11 @@ def _get_class_for_version(pylinac_version=None):
 
 
 def find_bb_only_raw(x, y, image, padding):
-    WLImage = _pylinac_vendored_wlutz.WLImageCurrent
-    wl_image = WLImage(image)
-    wl_image.set_bounding_box_by_padding(padding)
+    dx, dy, dpi = _get_dx_dy_dpi(x, y)
 
-    dx = _convert_grid_to_step_size(x)
-    dy = _convert_grid_to_step_size(y)
+    WLImage = _pylinac_vendored_wlutz.WLImageCurrent
+    wl_image = WLImage(image, dpi=dpi)
+    wl_image.set_bounding_box_by_padding(padding)
 
     bb_centre = [wl_image.bb.x * dx + np.min(x), wl_image.bb.y * dy + np.min(y)]
 
@@ -129,7 +142,7 @@ def find_bb_only(x, y, image, edge_lengths, penumbra, field_centre, field_rotati
 
     x_new = np.arange(-x_radius, x_radius + dx / 2, dx)
     y_new = np.arange(-y_radius, y_radius + dy / 2, dy)
-    centralised_image = _utilities.create_centralised_image(
+    centralised_image = _transformation.create_centralised_image(
         x, y, image, field_centre, field_rotation, new_x=x_new, new_y=y_new
     )
 
@@ -146,7 +159,9 @@ def find_bb_only(x, y, image, edge_lengths, penumbra, field_centre, field_rotati
     #     print(bb_centre)
     #     raise
 
-    bb_centre = _utilities.transform_point(raw_bb_centre, field_centre, field_rotation)
+    bb_centre = _transformation.transform_point(
+        raw_bb_centre, field_centre, field_rotation
+    )
 
     return bb_centre
 
@@ -247,7 +262,7 @@ def run_wlutz_with_manual_search_definition(
         )
         new_y = new_x
 
-    centralised_image = _utilities.create_centralised_image(
+    centralised_image = _transformation.create_centralised_image(
         x, y, image, search_offset, field_rotation, new_x=new_x, new_y=new_y
     )
 
@@ -266,10 +281,10 @@ def run_wlutz_with_manual_search_definition(
             fill_errors_with_nan=fill_errors_with_nan,
         )
 
-        bb_centre = _utilities.transform_point(
+        bb_centre = _transformation.transform_point(
             raw_bb_centre, search_offset, field_rotation
         )
-        field_centre = _utilities.transform_point(
+        field_centre = _transformation.transform_point(
             raw_field_centre, search_offset, field_rotation
         )
 

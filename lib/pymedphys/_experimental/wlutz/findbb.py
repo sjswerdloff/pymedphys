@@ -46,16 +46,15 @@ def find_bb_centre(
     field = imginterp.create_interpolated_field(x, y, image)
 
     try:
-        bb_centre = optimise_bb_centre(
-            field, bb_diameter, field_centre, initial_bb_centre=field_centre
-        )
-    except ValueError:
         initial_bb_centre = pylinacwrapper.find_bb_only(
             x, y, image, edge_lengths, penumbra, field_centre, field_rotation
         )
-        bb_centre = optimise_bb_centre(
-            field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
-        )
+    except ValueError:
+        initial_bb_centre = field_centre
+
+    bb_centre = optimise_bb_centre(
+        field, bb_diameter, field_centre, initial_bb_centre=initial_bb_centre
+    )
 
     return bb_centre
 
@@ -166,8 +165,7 @@ def bb_basinhopping(to_minimise, bb_bounds, initial_bb_centre):
 
 
 def create_bb_to_minimise(field, bb_diameter):
-    """This is a numpy vectorised version of `create_bb_to_minimise_simple`
-    """
+    """This is a numpy vectorised version of `create_bb_to_minimise_simple`"""
 
     points_to_check_edge_agreement, dist = interppoints.create_bb_points_function(
         bb_diameter

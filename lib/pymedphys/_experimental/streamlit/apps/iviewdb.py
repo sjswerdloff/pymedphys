@@ -19,11 +19,13 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xmltodict
 
+from pymedphys._streamlit import categories
+from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
 from pymedphys._experimental.streamlit.utilities import dbf
 
-CATEGORY = "experimental"
+CATEGORY = categories.PLANNING
 TITLE = "iView Database Explorer"
 
 
@@ -45,7 +47,7 @@ def get_files_for_extension(directory: pathlib.Path, extension: str):
 
 
 def main():
-    st.title("iView Database Explorer")
+    config = _config.get_config()
 
     st.write(
         """
@@ -59,7 +61,9 @@ def main():
         """
     )
 
-    _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
+    _, database_directory = misc.get_site_and_directory(
+        config, "Database Site", "iviewdb"
+    )
 
     database_paths = {
         path.stem.lower(): path
